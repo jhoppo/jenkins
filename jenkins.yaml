@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jenkins-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: jenkins-nfs
+  nfs:
+    path: {{ home_path }}
+    server: { nfs-serverIP }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: jenkins-nfs
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: jenkins
+  name: jenkins
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jenkins
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: jenkins
+    spec:
+      volumes:
+      - name: jks-data
+        persistentVolumeClaim:
+          claimName: jenkins-pvc
+      containers:
+      - image: jenkins/jenkins:lts
+        name: jenkins
+        volumeMounts:
+        - name: jks-data
+          mountPath: /var/jenkins_home
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: jenkins
+  name: jenkins-service
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+    nodePort: {{ expose-port }}
+  selector:
+    app: jenkins
+  type: NodePort
+status:
+  loadBalancer: {}
